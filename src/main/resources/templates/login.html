@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>id-plz Login</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { text-align: center; color: #5a5a5a; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], input[type="hidden"] { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .attributes-group { margin-top: 15px; padding: 10px; border: 1px dashed #ccc; border-radius: 4px; }
+        .attribute-entry { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+        .attribute-entry .attr-key-input, .attribute-entry .attr-value-input { flex-grow: 1; } /* Allow inputs to grow */
+        button, .button-like { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; text-decoration: none; display: inline-block; }
+        button:hover, .button-like:hover { background-color: #0056b3; }
+        .add-attr-btn { background-color: #28a745; margin-top: 10px; }
+        .remove-attr-btn { background-color: #dc3545; padding: 5px 10px; font-size: 12px;}
+        .error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+   <h2>IDPlease | SAMLinator</h2>
+   <p>Your disposable SAML Identity Provider.</p>
+
+    <div th:if="${errorMessage}" class="error" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/saml/reply}" th:object="${samlLoginRequest}" method="post">
+        <input type="hidden" th:field="*{samlRequest}"/>
+        <input type="hidden" th:field="*{relayState}"/>
+        <input type="hidden" th:field="*{acsUrl}"/>
+        <input type="hidden" th:field="*{requestId}"/>
+        <input type="hidden" th:field="*{spEntityId}"/>
+
+
+        <div>
+            <label for="username">Username (NameID):</label>
+            <input type="text" id="username" th:field="*{username}" required="required" th:value="*{username ?: 'user@example.com'}"/>
+        </div>
+
+        <div class="attributes-group">
+            <h4>SAML Attributes:</h4>
+            <div id="attributes-container">
+                <div class="attribute-entry" th:each="attr : *{attributes}">
+                    <input type="text" class="attr-key-input" placeholder="Attribute Name"
+                           th:value="${attr.key}"
+                           oninput="updateAssociatedValueInputName(this)" />
+                    <span>=</span>
+                    <input type="text" class="attr-value-input" placeholder="Attribute Value"
+                           th:name="'attributes[' + ${attr.key} + ']'"
+                           th:value="${attr.value}" />
+                    <button type="button" class="remove-attr-btn" onclick="this.parentNode.remove()">Remove</button>
+                </div>
+            </div>
+            <button type="button" class="add-attr-btn" onclick="addAttributeEntry()">Add Attribute</button>
+        </div>
+
+        <br/>
+        <button type="submit">Login & Generate SAML Response</button>
+    </form>
+
+</div>
+<div>
+    <a href="metadata">IdP metadata.xml</a>
+</div>
+
+<script>
+    function addAttributeEntry() {
+        const container = document.getElementById('attributes-container');
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'attribute-entry';
+
+        const keyInput = document.createElement('input');
+        keyInput.type = 'text';
+        keyInput.className = 'attr-key-input';
+        keyInput.placeholder = 'Attribute Name';
+        // Add event listener to update the corresponding value input's name
+        keyInput.oninput = function() { updateAssociatedValueInputName(this); };
+
+        const separator = document.createElement('span');
+        separator.textContent = ' = ';
+
+        const valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.className = 'attr-value-input';
+        valueInput.placeholder = 'Attribute Value';
+        // IMPORTANT: The name attribute for the valueInput will be set dynamically
+        // by updateAssociatedValueInputName when the keyInput changes.
+        // Initially, it might not have a name or have a temporary one.
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'remove-attr-btn';
+        removeButton.textContent = 'Remove';
+        removeButton.onclick = function() { this.parentNode.remove(); };
+
+        entryDiv.appendChild(keyInput);
+        entryDiv.appendChild(separator);
+        entryDiv.appendChild(valueInput);
+        entryDiv.appendChild(removeButton);
+        container.appendChild(entryDiv);
+        keyInput.focus(); // Focus on the newly added key input
+    }
+
+    function updateAssociatedValueInputName(keyInputElem) {
+        const parentDiv = keyInputElem.parentNode;
+        if (!parentDiv) return; // Should not happen if called from input within entryDiv
+
+        const valueInputElem = parentDiv.querySelector('.attr-value-input');
+        if (!valueInputElem) return; // Should find the sibling value input
+
+        const key = keyInputElem.value.trim();
+        if (key) {
+            // This sets the name like "attributes[enteredKey]" which Spring MVC can bind to a Map
+            valueInputElem.name = 'attributes[' + key + ']';
+        } else {
+            // If key is cleared, remove the name to prevent submitting an empty/invalid key-value pair
+            // or assign a unique non-binding name if you want to keep the input field for editing
+            valueInputElem.removeAttribute('name');
+        }
+    }
+</script>
+
+</body>
+</html>
