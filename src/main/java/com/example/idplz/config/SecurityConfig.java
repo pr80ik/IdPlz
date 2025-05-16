@@ -1,11 +1,17 @@
 package com.example.idplz.config;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.info.InfoEndpoint;
+import org.springframework.boot.actuate.metrics.MetricsEndpoint;
+import org.springframework.boot.actuate.metrics.export.prometheus.PrometheusScrapeEndpoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -17,6 +23,10 @@ public class SecurityConfig {
            .authorizeHttpRequests(authorizeRequests ->
                authorizeRequests
                    .requestMatchers("/saml/**", "/login", "/css/**", "/js/**", "/error").permitAll() // Allow access to SAML endpoints and login
+                   .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                   .requestMatchers(EndpointRequest.to(InfoEndpoint.class)).permitAll()
+                   .requestMatchers(EndpointRequest.to(PrometheusScrapeEndpoint.class)).permitAll()
+                   .requestMatchers(EndpointRequest.to(MetricsEndpoint.class)).permitAll()
                    .anyRequest().authenticated()
            )
            .formLogin(withDefaults()); // Simple form login for any other protected resources (not used for SAML)
